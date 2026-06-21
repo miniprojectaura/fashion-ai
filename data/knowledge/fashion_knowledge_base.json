@@ -1,0 +1,296 @@
+{
+  "fabric_encyclopedia": {
+    "banarasi_silk": {
+      "origin": "Varanasi, Uttar Pradesh",
+      "characteristics": "Heavy, lustrous, gold/silver zari brocade",
+      "ideal_occasions": ["wedding", "reception", "religious ceremony"],
+      "care": "Dry clean only. Store with acid-free tissue.",
+      "price_range_inr": "8000-200000",
+      "body_types": ["hourglass", "pear", "rectangle"],
+      "draping_tip": "The weight helps the saree drape naturally. Pin the pallu for structured look."
+    },
+    "kanjeevaram_silk": {
+      "origin": "Kanchipuram, Tamil Nadu",
+      "characteristics": "Pure mulberry silk with contrasting pallu, temple motifs",
+      "ideal_occasions": ["South Indian wedding", "temple visit", "puja"],
+      "care": "Dry clean. Never fold on zari lines.",
+      "price_range_inr": "5000-100000",
+      "body_types": ["all body types"],
+      "draping_tip": "Best in traditional Nivi style. Use a wide-border saree for petite frames to add volume."
+    },
+    "chanderi": {
+      "origin": "Chanderi, Madhya Pradesh",
+      "characteristics": "Lightweight, sheer, gold/silver zari with butti motifs",
+      "ideal_occasions": ["office", "casual party", "day event"],
+      "care": "Gentle hand wash or dry clean",
+      "price_range_inr": "2000-15000",
+      "body_types": ["plus_size", "apple", "inverted_triangle"],
+      "draping_tip": "Light and flowy — ideal for summer events. Layer with a contrast blouse for depth."
+    },
+    "tussar_silk": {
+      "origin": "Jharkhand, Bihar",
+      "characteristics": "Textured, natural gold color, handwoven",
+      "ideal_occasions": ["art exhibition", "cultural event", "office"],
+      "care": "Dry clean preferred. Air dry in shade.",
+      "price_range_inr": "3000-20000",
+      "body_types": ["rectangle", "hourglass"],
+      "draping_tip": "The natural texture adds dimension. Pair with oxidized jewelry."
+    },
+    "georgette": {
+      "origin": "Synthetic/natural silk blend",
+      "characteristics": "Lightweight, flowing, slightly crinkled",
+      "ideal_occasions": ["party", "casual", "office"],
+      "care": "Hand wash cold or dry clean",
+      "price_range_inr": "500-5000",
+      "body_types": ["all body types"],
+      "draping_tip": "Best for pre-stitched sarees and anarkalis. Falls beautifully on all body types."
+    },
+    "cotton": {
+      "origin": "Various (Bengal, South India, Gujarat)",
+      "subtypes": ["Bengal cotton", "Mangalagiri", "Pochampally", "Kalamkari"],
+      "characteristics": "Breathable, comfortable, natural",
+      "ideal_occasions": ["daily wear", "office", "temple", "summer events"],
+      "care": "Machine wash. Iron while damp for best results.",
+      "price_range_inr": "300-5000",
+      "body_types": ["all body types"],
+      "draping_tip": "Starch lightly for crisp look. Bengali drape works beautifully."
+    },
+    "chiffon": {
+      "origin": "Synthetic silk",
+      "characteristics": "Very lightweight, transparent, flowing",
+      "ideal_occasions": ["evening party", "cocktail", "beach"],
+      "care": "Hand wash delicate cycle",
+      "price_range_inr": "400-3000",
+      "body_types": ["pear", "hourglass", "petite"],
+      "draping_tip": "Needs a good-quality slip/petticoat underneath. Beautiful for pallu display."
+    },
+    "net": {
+      "origin": "Synthetic",
+      "characteristics": "Sheer mesh, decorative overlay",
+      "ideal_occasions": ["reception", "sangeet", "cocktail party"],
+      "care": "Dry clean only for embroidered versions",
+      "price_range_inr": "800-8000",
+      "body_types": ["hourglass", "rectangle"],
+      "draping_tip": "Always layer over a solid base. Creates a glamorous, layered effect."
+    },
+    "linen": {
+      "origin": "Natural flax fiber",
+      "characteristics": "Cool, breathable, slightly textured",
+      "ideal_occasions": ["summer office", "brunch", "casual"],
+      "care": "Machine wash gentle. Embrace natural wrinkles.",
+      "price_range_inr": "1000-6000",
+      "body_types": ["all body types"],
+      "draping_tip": "Best for structured garments like kurtas and blazers. Wrinkles are part of the charm."
+    },
+    "organza": {
+      "origin": "Silk/synthetic",
+      "characteristics": "Stiff, sheer, holds shape well",
+      "ideal_occasions": ["wedding", "reception", "grand events"],
+      "care": "Dry clean only",
+      "price_range_inr": "2000-25000",
+      "body_types": ["petite", "rectangle"],
+      "draping_tip": "Creates volume and drama. Perfect for ruffled sarees and structured dupattas."
+    }
+  },
+
+  "color_theory": {
+    "skin_tone_guide": {
+      "fair": {
+        "best_colors": ["emerald green", "royal blue", "deep red", "fuchsia", "coral", "teal"],
+        "avoid_colors": ["pale yellow", "nude", "washed-out pastels"],
+        "metallic": "Both gold and silver work well",
+        "wedding_colors": ["deep red", "emerald green", "royal blue"],
+        "tip": "Jewel tones create beautiful contrast. Avoid colors too close to skin tone."
+      },
+      "wheatish": {
+        "best_colors": ["maroon", "olive green", "mustard", "cobalt blue", "peach", "coral"],
+        "avoid_colors": ["dull brown", "grey-green", "muddy tones"],
+        "metallic": "Gold is more flattering than silver",
+        "wedding_colors": ["maroon", "magenta", "gold-accented"],
+        "tip": "Warm earth tones are your best friend. Mustard and coral make wheatish skin glow."
+      },
+      "dusky": {
+        "best_colors": ["gold", "copper", "emerald", "royal blue", "fuchsia", "orange", "bright yellow"],
+        "avoid_colors": ["pale pink", "lavender", "beige", "nude"],
+        "metallic": "Gold is stunning, copper even better",
+        "wedding_colors": ["bright red", "gold", "emerald green"],
+        "tip": "Bold, bright colors create gorgeous contrast. Don't shy away from neons and metallics!"
+      },
+      "dark": {
+        "best_colors": ["white", "ivory", "bright yellow", "hot pink", "electric blue", "tangerine", "lime green"],
+        "avoid_colors": ["dark brown", "deep navy", "black in large blocks"],
+        "metallic": "Gold is most flattering",
+        "wedding_colors": ["red with gold", "ivory with embroidery", "bright pink"],
+        "tip": "You can pull off the brightest colors beautifully. White and ivory look stunning on deep skin."
+      }
+    },
+    "color_combinations": {
+      "classic": ["red + gold", "navy + silver", "green + gold", "maroon + cream"],
+      "modern": ["teal + coral", "mustard + grey", "olive + rust", "burgundy + blush"],
+      "festive": ["hot pink + orange", "purple + gold", "red + emerald", "royal blue + gold"],
+      "office": ["navy + white", "grey + blush", "olive + cream", "burgundy + navy"],
+      "contrast": ["red + black", "yellow + blue", "orange + teal", "pink + green"]
+    },
+    "occasion_colors": {
+      "wedding_bride": ["red", "maroon", "magenta", "gold", "orange"],
+      "wedding_guest": ["green", "blue", "pink", "purple", "teal"],
+      "engagement": ["yellow", "pink", "peach", "gold"],
+      "funeral_condolence": ["white", "off-white", "cream"],
+      "temple_visit": ["white", "yellow", "light pink", "cream", "saffron"],
+      "office": ["navy", "grey", "olive", "maroon", "white"],
+      "party": ["black", "gold", "sequined", "metallic", "bold prints"]
+    }
+  },
+
+  "body_type_guide": {
+    "pear": {
+      "characteristics": "Wider hips, narrow shoulders",
+      "best_garments": ["A-line kurta", "empire waist anarkali", "boat neck blouse", "flared lehenga"],
+      "avoid": ["tight-fitting bottom wear", "heavy hip embroidery"],
+      "saree_tips": "Choose a saree with a heavily embellished pallu to draw attention upward. Avoid stiff fabrics at the hip.",
+      "lehenga_tips": "A-line or flared lehenga. Avoid mermaid/fishtail. Pair with a statement blouse."
+    },
+    "apple": {
+      "characteristics": "Fuller midsection, slim legs",
+      "best_garments": ["empire waist kurta", "straight-cut salwar", "V-neck blouse", "A-line dress"],
+      "avoid": ["tight waistbands", "crop tops", "body-hugging fabrics"],
+      "saree_tips": "Drape the pallu in a way that flows over the midsection. Choose fluid fabrics like georgette.",
+      "lehenga_tips": "High-waisted with structured corset blouse. Avoid heavy waistbands."
+    },
+    "hourglass": {
+      "characteristics": "Balanced bust and hips, defined waist",
+      "best_garments": ["fitted kurta", "wrap dress", "belted anarkali", "mermaid lehenga"],
+      "avoid": ["oversized/boxy garments", "shapeless kurtas"],
+      "saree_tips": "Any draping style works! Fitted blouse + defined waist = stunning. Try a belted saree look.",
+      "lehenga_tips": "Mermaid or fishtail lehenga showcases your curves. Add a belt for definition."
+    },
+    "rectangle": {
+      "characteristics": "Straight body, minimal waist definition",
+      "best_garments": ["peplum top", "layered kurta", "ruffled saree", "lehenga with heavy dupatta"],
+      "avoid": ["completely straight silhouettes", "column dresses"],
+      "saree_tips": "Choose sarees with heavy borders to add volume. Pleated pallu creates curves.",
+      "lehenga_tips": "Flared lehenga with structured blouse. Volume creates the illusion of curves."
+    },
+    "inverted_triangle": {
+      "characteristics": "Broad shoulders, narrow hips",
+      "best_garments": ["V-neck kurta", "palazzo pants", "A-line skirt", "flared bottom lehenga"],
+      "avoid": ["padded shoulders", "boat necks", "cap sleeves"],
+      "saree_tips": "Choose a saree with a heavily decorated border to add volume at the bottom. Avoid big pallu pins.",
+      "lehenga_tips": "Heavy embroidered lehenga skirt with a simple blouse. Balance top-heavy silhouette."
+    },
+    "plus_size": {
+      "characteristics": "Full-figured, all proportions",
+      "best_garments": ["A-line kurta with side slits", "palazzos", "straight-cut salwar", "georgette saree"],
+      "avoid": ["heavy stiff fabrics", "small prints", "horizontal stripes"],
+      "saree_tips": "Georgette and chiffon drape beautifully. Vertical patterns elongate. Avoid very stiff silk.",
+      "lehenga_tips": "A-line lehenga in flowing fabric. Vertical embroidery creates lengthening effect.",
+      "confidence_note": "Every body is beautiful. Fashion is about celebrating your shape, not hiding it!"
+    },
+    "petite": {
+      "characteristics": "Under 5'3\", small frame",
+      "best_garments": ["short kurta", "high-waisted palazzos", "vertical print saree", "knee-length anarkali"],
+      "avoid": ["very long kurtas", "heavy layering", "oversized dupattas"],
+      "saree_tips": "Choose smaller prints. Avoid very wide borders. Pre-stitched saree with heels adds height.",
+      "lehenga_tips": "High-waisted, just-above-ankle length. Avoid floor-sweeping designs. Wear heels."
+    },
+    "tall": {
+      "characteristics": "Over 5'7\", long frame",
+      "best_garments": ["floor-length anarkali", "long kurta", "palazzo sets", "heavy lehenga"],
+      "avoid": ["very short kurtas (can look too long)"],
+      "saree_tips": "You can carry heavy Banarasi/Kanjeevaram beautifully. Full-length pallu looks regal.",
+      "lehenga_tips": "Floor-length with trail works beautifully. You can carry heavy embroidery and volume."
+    }
+  },
+
+  "draping_styles": {
+    "nivi": {"region": "Andhra/Telangana", "occasion": "All", "steps": "Tuck, pleat, wrap, pin pallu over left shoulder"},
+    "bengali": {"region": "Bengal", "occasion": "Puja, Formal", "steps": "No pleats, wrap around body, key hole front, pallu over right shoulder"},
+    "gujarati": {"region": "Gujarat", "occasion": "Garba, Wedding", "steps": "Front pallu from back to front over right shoulder, pin with decorative brooch"},
+    "maharashtrian": {"region": "Maharashtra", "occasion": "Festival, Traditional", "steps": "9-yard saree tucked between legs, dhoti style, pallu over left shoulder"},
+    "coorg": {"region": "Karnataka", "occasion": "Wedding, Traditional", "steps": "Pleats at back, front and back, starched cotton, heavy gold jewelry"},
+    "pinned_pallu": {"region": "Pan-India", "occasion": "Formal", "steps": "Neat box pleats, pallu pinned at shoulder, displayed across chest"},
+    "lehenga_drape": {"region": "Modern", "occasion": "Party, Reception", "steps": "Saree draped as skirt, separate dupatta, modern blouse"},
+    "front_pallu": {"region": "Modern", "occasion": "Casual", "steps": "Pallu draped across front like shawl, loose and flowing"}
+  },
+
+  "regional_fashion": {
+    "south_india": {
+      "signature_garments": ["Kanjeevaram saree", "Mundu", "Kasavu saree", "Pattu pavadai"],
+      "wedding_tradition": "Bride wears Kanjeevaram in red/gold. Groom wears veshti with angavastram.",
+      "temple_dress": "White/cream saree with gold border. Men: white dhoti with angavastram.",
+      "jewelry": "Temple jewelry, kemp stones, gold jhumkas, kamarbandh",
+      "key_designers": ["Sundari Silks", "Nalli", "Pothys", "RMKV"]
+    },
+    "north_india": {
+      "signature_garments": ["Lehenga choli", "Anarkali", "Sharara", "Sherwani"],
+      "wedding_tradition": "Bride wears red lehenga with heavy embroidery. Groom wears cream/ivory sherwani.",
+      "festival_wear": "Bright colors, heavy dupattas, embroidered kurtas",
+      "jewelry": "Kundan, polki, meenakari, maang tikka, nath",
+      "key_designers": ["Sabyasachi", "Manyavar", "Biba", "W"]
+    },
+    "western_india": {
+      "signature_garments": ["Bandhani saree", "Patola", "Chaniya choli", "Kaftan"],
+      "wedding_tradition": "Bride wears Paithani/Banarasi. Groom wears kurta with dhoti or churidar.",
+      "festival_wear": "Navratri chaniya choli, tie-dye, mirror work",
+      "jewelry": "Kundan, glass bangles, oxidized silver, temple earrings",
+      "key_designers": ["Sabyasachi", "Anita Dongre", "Gaurang Shah"]
+    },
+    "eastern_india": {
+      "signature_garments": ["Tant saree", "Dhakai jamdani", "Baluchari saree", "Mekhela chador"],
+      "wedding_tradition": "Bengali bride: red/white Banarasi with shakha pola bangles. Assamese: mekhela chador.",
+      "festival_wear": "White and red for Durga Puja, Dhakai jamdani for formal events",
+      "jewelry": "Gold choker, chandbali, rani haar",
+      "key_designers": ["Sabyasachi", "Anavila", "Raw Mango"]
+    }
+  },
+
+  "tailoring_guide": {
+    "saree_blouse": {
+      "fabric_needed": "0.8-1.2 meters (depends on sleeve length)",
+      "measurements_needed": ["bust", "waist", "shoulder width", "arm hole", "sleeve length", "blouse length", "back neck depth", "front neck depth"],
+      "stitch_cost_range": "₹300-₹2,000",
+      "common_styles": ["princess cut", "dart blouse", "katori blouse", "halter neck", "boat neck", "sweetheart neck"]
+    },
+    "kurta": {
+      "fabric_needed": "2.5-3 meters (regular), 4-5 meters (anarkali)",
+      "measurements_needed": ["chest/bust", "waist", "hip", "shoulder", "sleeve length", "kurta length"],
+      "stitch_cost_range": "₹500-₹1,500",
+      "common_styles": ["straight cut", "A-line", "anarkali", "shirt style", "asymmetric"]
+    },
+    "lehenga": {
+      "fabric_needed": "5-12 meters (depends on flare)",
+      "measurements_needed": ["waist", "hip", "length", "flare circumference"],
+      "stitch_cost_range": "₹1,500-₹5,000",
+      "common_styles": ["A-line", "mermaid", "circular", "paneled", "godet"]
+    },
+    "salwar": {
+      "fabric_needed": "2-2.5 meters",
+      "measurements_needed": ["waist", "hip", "length", "bottom circumference"],
+      "stitch_cost_range": "₹300-₹800",
+      "common_styles": ["regular salwar", "patiala", "churidar", "dhoti salwar", "palazzo"]
+    }
+  },
+
+  "budget_tiers": {
+    "economy": {
+      "range": "₹500-₹2,000",
+      "platforms": ["Amazon", "Flipkart", "Meesho"],
+      "tips": "Look for end-of-season sales. Cotton and rayon are best value. Accessorize to elevate."
+    },
+    "mid_range": {
+      "range": "₹2,000-₹8,000",
+      "platforms": ["Myntra", "AJIO", "Tata CLiQ"],
+      "tips": "Best value segment. Good quality fabrics. Look for Myntra Mega Sales for 50-70% off."
+    },
+    "premium": {
+      "range": "₹8,000-₹25,000",
+      "platforms": ["FabIndia", "Nalli", "Kalki Fashion"],
+      "tips": "Pure fabrics, designer labels. Worth investing for wedding/special occasions."
+    },
+    "luxury": {
+      "range": "₹25,000+",
+      "platforms": ["Sabyasachi", "Anita Dongre", "Raw Mango", "Tarun Tahiliani"],
+      "tips": "Heirloom quality pieces. Consider renting for one-time occasions via Flyrobe."
+    }
+  }
+}
