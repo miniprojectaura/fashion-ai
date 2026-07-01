@@ -81,6 +81,21 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> analyzeBody({
+    required String frontPath,
+    String? sidePath,
+    double heightCm = 165.0,
+  }) async {
+    final form = FormData.fromMap({
+      'front': await MultipartFile.fromFile(frontPath, filename: 'front.jpg'),
+      if (sidePath != null)
+        'side': await MultipartFile.fromFile(sidePath, filename: 'side.jpg'),
+      'height_cm': heightCm.toString(),
+    });
+    final resp = await _dio.post('/api/v1/avatar/analyze', data: form);
+    return resp.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> tailoringGuide({
     required String garmentType,
     String fabric = 'silk',
@@ -134,5 +149,44 @@ class ApiClient {
     final b64 = variant['image_base64'] as String?;
     if (b64 == null) return null;
     return base64Decode(b64);
+  }
+
+  /// Voice conversation — send audio, get transcript + reply audio
+  Future<Map<String, dynamic>> voiceConverse({
+    required String audioPath,
+    required String sessionId,
+    String language = 'te',
+  }) async {
+    final form = FormData.fromMap({
+      'audio': await MultipartFile.fromFile(audioPath, filename: 'audio.wav'),
+      'session_id': sessionId,
+      'language': language,
+    });
+    final resp = await _dio.post('/api/v1/voice/converse', data: form);
+    return resp.data as Map<String, dynamic>;
+  }
+
+  /// Text-based stylist conversation (no audio needed)
+  Future<Map<String, dynamic>> voiceConverseText({
+    required String message,
+    required String sessionId,
+    String language = 'te',
+  }) async {
+    final resp = await _dio.post('/api/v1/voice/converse-text', data: {
+      'message': message,
+      'session_id': sessionId,
+      'language': language,
+    });
+    return resp.data as Map<String, dynamic>;
+  }
+
+  /// Finalize outfit — lock spec, generate image, save to wardrobe
+  Future<Map<String, dynamic>> finalizeOutfit({
+    required String sessionId,
+  }) async {
+    final resp = await _dio.post('/api/v1/voice/finalize', data: {
+      'session_id': sessionId,
+    });
+    return resp.data as Map<String, dynamic>;
   }
 }

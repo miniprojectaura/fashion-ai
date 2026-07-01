@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     fashionclip_model: str = "patrickjohncyh/fashion-clip"
     photo_retention_days: int = 30
 
+    # Sarvam AI — voice (ASR Saarika + TTS Bulbul)
+    sarvam_api_key: str = ""
+
+    # Stylist persona model — change this one var post-finetune
+    llm_stylist_model: str = "groq/llama-3.3-70b-versatile"
+
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
 

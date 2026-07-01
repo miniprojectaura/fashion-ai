@@ -152,3 +152,74 @@ def _placeholder_png_base64(seed: str) -> str:
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
     return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+async def generate_from_spec(
+    *,
+    spec: dict,
+    user_id: str = "anonymous",
+) -> str | None:
+    """Generate an outfit image from a finalized outfit spec.
+
+    Builds a detailed prompt from the structured spec, generates via SDXL,
+    stores the result, and returns a public URL.
+
+    Args:
+        spec: Finalized outfit spec dict with garment_type, fabric, color, etc.
+        user_id: For storage path namespacing.
+
+    Returns:
+        Public URL of the generated image, or None on failure.
+    """
+    import uuid
+
+    from services.api.core.storage import get_storage
+
+    # Build a rich prompt from the spec
+    garment = spec.get("garment_type", "outfit")
+    fabric = spec.get("fabric", "silk")
+    color = spec.get("color", "red")
+    silhouette = spec.get("silhouette", "")
+    occasion = spec.get("occasion", "")
+    style_notes = spec.get("style_notes", "")
+
+    prompt_parts = [
+        f"{color} {fabric} {garment}",
+        f"{silhouette} silhouette" if silhouette else "",
+        f"for {occasion}" if occasion else "",
+        style_notes,
+        "high fashion editorial photography, studio lighting, full body",
+        "detailed fabric texture, professional fashion shoot, 4k quality",
+    ]
+    prompt = ", ".join(p for p in prompt_parts if p).strip()
+
+    # Generate using existing SDXL pipeline
+    settings = get_settings()
+    image_bytes = None
+
+    if settings.huggingface_api_key and hf_breaker.current_state != "open":
+        try:
+            image_bytes = await _hf_sdxl_generate(prompt, settings)
+        except Exception as exc:
+            logger.warning("SDXL generation from spec failed: %s", exc)
+
+    if not image_bytes or len(image_bytes) < 500:
+        # Fallback: generate placeholder
+        seed = hashlib.sha256(prompt.encode()).hexdigest()
+        placeholder_b64 = _placeholder_png_base64(seed)
+        image_bytes = base64.b64decode(placeholder_b64)
+
+    # Store to object storage
+    try:
+        storage = get_storage()
+        image_key = f"outfits/{user_id}/{uuid.uuid4().hex}.png"
+        url = await storage.upload_bytes(
+            image_bytes,
+            key=image_key,
+            content_type="image/png",
+        )
+        return url
+    except Exception as exc:
+        logger.warning("Outfit image storage failed: %s", exc)
+        return None
+

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
-import 'dart:io';
-import 'dart:convert';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/api_provider.dart';
 import '../../core/aura_background.dart';
@@ -20,9 +20,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   final _scrollController = ScrollController();
   final _messages = <Map<String, String>>[];
   String? _sessionId;
+  final _voiceSessionId = 'voice-default';
   bool _loading = false;
   bool _recording = false;
   final _recorder = AudioRecorder();
+  final _audioPlayer = AudioPlayer();
   late final AnimationController _typingCtrl;
 
   @override
@@ -39,6 +41,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     _controller.dispose();
     _scrollController.dispose();
     _recorder.dispose();
+    _audioPlayer.dispose();
     _typingCtrl.dispose();
     super.dispose();
   }
@@ -118,18 +121,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         setState(() => _loading = true);
 
         try {
-          final file = File(path);
-          final bytes = await file.readAsBytes();
-          final b64 = base64Encode(bytes);
-
           final api = ref.read(apiClientProvider);
-          final resp = await api.sendChat(
-            message: '[AUDIO:$b64]',
-            sessionId: _sessionId,
+          final resp = await api.voiceConverse(
+            audioPath: path,
+            sessionId: _voiceSessionId,
             language: 'te',
           );
-          _sessionId = resp['session_id'] as String?;
-          _addMessage('assistant', resp['reply'] as String);
+
+          // Show transcript
+          final transcript = resp['transcript'] as String? ?? '';
+          if (transcript.isNotEmpty) {
+            // Update the user message with actual transcript
+            if (_messages.isNotEmpty && _messages.last['text'] == '🎤 Voice message sent…') {
+              setState(() => _messages.last['text'] = '🎤 $transcript');
+            }
+          }
+
+          // Show reply
+          final replyText = resp['reply_text'] as String? ?? '';
+          _addMessage('assistant', replyText);
+
+          // Show outfit state if available
+          final outfitState = resp['outfit_state'] as Map<String, dynamic>?;
+          if (outfitState != null) {
+            final stage = outfitState['stage'] as String? ?? '';
+            if (stage == 'finalized') {
+              _addMessage('assistant', '✅ Outfit finalized! Tap the button below to generate your outfit image.');
+            }
+          }
+
+          // Play reply audio
+          final audioUrl = resp['reply_audio_url'] as String?;
+          if (audioUrl != null && audioUrl.isNotEmpty) {
+            try {
+              await _audioPlayer.play(UrlSource(audioUrl));
+            } catch (_) {
+              // Audio playback is best-effort
+            }
+          }
         } catch (e) {
           _addMessage('assistant', '❌ Voice processing failed: $e');
         } finally {
@@ -138,7 +167,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       }
     } else {
       if (await _recorder.hasPermission()) {
-        await _recorder.start(const RecordConfig(), path: '');
+        // Record to a temp file
+        final tempDir = await getTemporaryDirectory();
+        final filePath = '${tempDir.path}/aura_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+        await _recorder.start(
+          const RecordConfig(encoder: AudioEncoder.wav),
+          path: filePath,
+        );
         setState(() => _recording = true);
       } else {
         if (mounted) {

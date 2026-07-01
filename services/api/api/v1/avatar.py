@@ -1,6 +1,6 @@
 import base64
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +23,70 @@ class AvatarResponse(BaseModel):
     glb_base64: str
     confidence: float
     measurements: dict
+
+
+class AnalyzeResponse(BaseModel):
+    profile_id: str
+    measurements: dict
+    mesh_url: str | None
+    confidence: float
+
+
+@router.post("/analyze", response_model=AnalyzeResponse)
+async def analyze_body(
+    front: UploadFile = File(...),
+    side: UploadFile | None = File(None),
+    height_cm: float = Form(165.0),
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Analyze body photos + user height → measurements + parametric mesh."""
+    front_bytes = compress_image(await _read_validated_image(front))
+    ok, reason = moderate_image_bytes(front_bytes)
+    if not ok:
+        raise HTTPException(status_code=400, detail=reason)
+    side_bytes = None
+    if side:
+        side_bytes = compress_image(await _read_validated_image(side))
+        ok2, reason2 = moderate_image_bytes(side_bytes)
+        if not ok2:
+            raise HTTPException(status_code=400, detail=reason2)
+
+    # Clamp height to sane range
+    height_cm = max(100.0, min(250.0, height_cm))
+
+    result = await reconstruct_body(front_bytes, side_bytes, height_cm=height_cm)
+
+    # Store mesh to object storage
+    storage = get_storage()
+    mesh_url = None
+    try:
+        glb_data = base64.b64decode(result.glb_base64)
+        mesh_url = await storage.upload_bytes(
+            glb_data,
+            key=f"avatars/{user_id}/body.glb",
+            content_type="model/gltf-binary",
+        )
+    except Exception:
+        pass  # mesh storage is best-effort
+
+    # Persist body profile
+    profile = BodyProfile(
+        user_id=user_id,
+        smplx_params=result.smplx_params,
+        glb_url=mesh_url,
+        measurements=result.measurements,
+    )
+    db.add(profile)
+    await db.commit()
+    await db.refresh(profile)
+
+    return AnalyzeResponse(
+        profile_id=profile.id,
+        measurements=result.measurements,
+        mesh_url=mesh_url,
+        confidence=result.confidence,
+    )
 
 
 @router.post("/upload", response_model=AvatarResponse)

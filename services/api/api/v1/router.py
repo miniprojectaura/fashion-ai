@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from services.api.api.v1 import auth, avatar, chat, design, feedback, privacy, search, session, status, storage_files, tailor, tasks, wardrobe
+from services.api.api.v1 import auth, avatar, chat, design, feedback, privacy, search, session, status, storage_files, tailor, tasks, voice, wardrobe, web_match
 
 api_router = APIRouter()
 api_router.include_router(status.router, prefix="/status", tags=["status"])
@@ -16,3 +16,5 @@ api_router.include_router(design.router, prefix="/design", tags=["design"])
 api_router.include_router(search.router, prefix="/search", tags=["search"])
 api_router.include_router(wardrobe.router, prefix="/wardrobe", tags=["wardrobe"])
 api_router.include_router(tailor.router, prefix="/tailor", tags=["tailor"])
+api_router.include_router(voice.router, prefix="/voice", tags=["voice"])
+api_router.include_router(web_match.router, prefix="/design", tags=["design-match"])
