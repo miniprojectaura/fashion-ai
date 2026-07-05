@@ -188,6 +188,7 @@ class FinalizeRequest(BaseModel):
 class FinalizeResponse(BaseModel):
     spec: dict
     image_url: str | None
+    outfit_image_b64: str | None = None
     wardrobe_item_id: str | None
     web_matches: list[dict]
     tryon_image_b64: str | None = None
@@ -245,19 +246,50 @@ async def finalize_outfit(
     except Exception:
         pass
 
-    # Phase D: Generate outfit image (existing SDXL pipeline)
+    # Phase D: Generate outfit image — capture bytes for inline delivery
     image_url = None
+    outfit_image_b64 = None
     try:
-        from services.vision.generate_outfit import generate_from_spec
-        image_url = await generate_from_spec(
-            spec=spec,
-            user_id=user_id,
-        )
+        from services.vision.generate_outfit import generate_from_spec, _hf_sdxl_generate, _placeholder_png_base64
+        import hashlib as _hashlib
+
+        # Build prompt from spec (same logic as generate_from_spec)
+        _garment = spec.get('garment_type', 'outfit')
+        _fabric = spec.get('fabric', 'silk')
+        _color = spec.get('color', 'red')
+        _silhouette = spec.get('silhouette', '')
+        _occasion = spec.get('occasion', '')
+        _style = spec.get('style_notes', '')
+        _parts = [f'{_color} {_fabric} {_garment}',
+                  f'{_silhouette} silhouette' if _silhouette else '',
+                  f'for {_occasion}' if _occasion else '', _style,
+                  'high fashion editorial, studio lighting, full body, 4k']
+        _prompt = ', '.join(p for p in _parts if p)
+
+        from services.api.core.config import get_settings as _gs
+        from services.api.core.resilience import hf_breaker
+        _settings = _gs()
+        _img_bytes = None
+        if _settings.huggingface_api_key and hf_breaker.current_state != 'open':
+            _img_bytes = await _hf_sdxl_generate(_prompt, _settings)
+        if not _img_bytes or len(_img_bytes) < 500:
+            _seed = _hashlib.sha256(_prompt.encode()).hexdigest()
+            _img_bytes = base64.b64decode(_placeholder_png_base64(_seed))
+
+        # Store base64 for inline delivery to mobile
+        outfit_image_b64 = base64.b64encode(_img_bytes).decode('ascii')
+
+        # Also try to get a URL (best-effort)
+        try:
+            image_url = await generate_from_spec(spec=spec, user_id=user_id)
+        except Exception:
+            pass
     except Exception as exc:
-        logger.warning("Outfit image generation failed: %s", exc)
+        logger.warning('Outfit image generation failed: %s', exc)
 
     # Phase E: Compute tailoring measurements (deterministic)
     tailoring_data = None
+    body_analysis = None
     if body_profile:
         try:
             from services.agent.tailoring_calc import compute as compute_tailoring
@@ -297,49 +329,68 @@ async def finalize_outfit(
         except Exception as exc2:
             logger.warning("Legacy web match also failed: %s", exc2)
 
-    # Phase G: Virtual try-on (HF Spaces — best-effort)
+    # Phase G: Virtual try-on (HF Spaces — with user's actual photo if available)
     tryon_image_b64 = None
     try:
         from services.vision.virtual_tryon import generate_tryon_image
+
+        # Extract user's front photo from BodyProfile (stored by avatar.py)
+        person_image_bytes = None
+        if body_profile and isinstance(body_profile, dict):
+            front_b64 = body_profile.get('_front_photo_b64')
+            if front_b64:
+                try:
+                    person_image_bytes = base64.b64decode(front_b64)
+                except Exception:
+                    pass
+
         tryon_bytes, tryon_engine = await generate_tryon_image(
             spec=spec,
+            person_image_bytes=person_image_bytes,
             body_analysis=body_analysis,
         )
         if tryon_bytes and len(tryon_bytes) > 500:
-            tryon_image_b64 = base64.b64encode(tryon_bytes).decode("ascii")
-            logger.info("[finalize] Try-on image generated via %s (%d bytes)",
+            tryon_image_b64 = base64.b64encode(tryon_bytes).decode('ascii')
+            logger.info('[finalize] Try-on image generated via %s (%d bytes)',
                         tryon_engine, len(tryon_bytes))
     except Exception as exc:
-        logger.warning("Virtual try-on failed (non-blocking): %s", exc)
+        logger.warning('Virtual try-on failed (non-blocking): %s', exc)
 
-    # Phase H: Auto-save to wardrobe
+    # Phase H: Auto-save to wardrobe (with full metadata for wardrobe display)
     wardrobe_item_id = None
     try:
+        wardrobe_meta = {
+            **spec,
+            '_tailoring': tailoring_data,
+            '_outfit_image_b64': outfit_image_b64[:200] if outfit_image_b64 else None,  # Truncated ref
+            '_has_tryon': tryon_image_b64 is not None,
+        }
         item = WardrobeItem(
             id=str(uuid.uuid4()),
             user_id=user_id,
             name=f"{spec.get('color', '')} {spec.get('fabric', '')} {spec.get('garment_type', 'Outfit')}".strip(),
             image_url=image_url,
-            category=spec.get("garment_type", "custom"),
-            metadata_json=spec,
+            category=spec.get('garment_type', 'custom'),
+            metadata_json=wardrobe_meta,
         )
         db.add(item)
         await db.commit()
         wardrobe_item_id = item.id
     except Exception as exc:
-        logger.warning("Wardrobe save failed: %s", exc)
+        logger.warning('Wardrobe save failed: %s', exc)
 
     # Extract reasoning from the last session history if available
     reasoning = None
     if session.history:
         for msg in reversed(session.history):
-            if msg.get("role") == "assistant" and "<think>" in (msg.get("content") or ""):
-                reasoning = msg["content"]
+            if msg.get('role') == 'assistant' and '<think>' in (msg.get('content') or ''):
+                reasoning = msg['content']
                 break
 
     return FinalizeResponse(
         spec=spec,
         image_url=image_url,
+        outfit_image_b64=outfit_image_b64,
         wardrobe_item_id=wardrobe_item_id,
         web_matches=web_matches,
         tryon_image_b64=tryon_image_b64,

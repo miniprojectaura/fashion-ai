@@ -1,1 +1,1 @@
-"""Product ingestion and hybrid RAG retrieval."""
+# Retrieval modules — web search, product matching

@@ -1,1 +1,1 @@
-"""LangGraph fashion agent mesh."""
+# Multi-agent fashion AI pipeline modules

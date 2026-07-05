@@ -23,7 +23,10 @@ async def list_wardrobe(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(WardrobeItem).where(WardrobeItem.user_id == user_id))
+    result = await db.execute(
+        select(WardrobeItem)
+        .where(WardrobeItem.user_id == user_id)
+    )
     items = result.scalars().all()
     return {
         "items": [
@@ -32,6 +35,7 @@ async def list_wardrobe(
                 "name": i.name,
                 "image_url": i.image_url,
                 "category": i.category,
+                "metadata": i.metadata_json,
             }
             for i in items
         ]

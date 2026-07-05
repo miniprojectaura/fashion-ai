@@ -161,7 +161,23 @@ async def analyze_body(
     # Clean measurements for storage (remove _vlm_ metadata keys for DB)
     clean_measurements = {k: v for k, v in result.measurements.items() if not k.startswith("_")}
     meta = {k: v for k, v in result.measurements.items() if k.startswith("_")}
-    store_data = {**clean_measurements, "_meta": meta, "_build_type": result.build_type, "_confidence": result.confidence}
+
+    # Store compressed front photo for virtual try-on reuse
+    # Compress to ~50KB JPEG to keep DB payload reasonable
+    front_photo_b64 = None
+    try:
+        small_front = compress_image(front_bytes, max_px=512)
+        front_photo_b64 = base64.b64encode(small_front).decode("ascii")
+    except Exception:
+        pass
+
+    store_data = {
+        **clean_measurements,
+        "_meta": meta,
+        "_build_type": result.build_type,
+        "_confidence": result.confidence,
+        "_front_photo_b64": front_photo_b64,
+    }
 
     # Upsert body profile — replace existing profile for this user
     existing = await db.execute(

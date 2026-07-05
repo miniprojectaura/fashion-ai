@@ -357,9 +357,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     try {
       final result = await api.finalizeOutfit(sessionId: _voiceSessionId);
 
-      // Show outfit image
+      // Show outfit image — prefer inline base64, fallback to URL
+      final outfitB64 = result['outfit_image_b64'] as String?;
       final imageUrl = result['image_url'] as String?;
-      if (imageUrl != null && imageUrl.isNotEmpty) {
+      if (outfitB64 != null && outfitB64.isNotEmpty) {
+        setState(() {
+          _messages.add({'role': 'result', 'type': 'tryon', 'data': outfitB64});
+        });
+        _scrollToBottom();
+      } else if (imageUrl != null && imageUrl.isNotEmpty) {
         setState(() {
           _messages.add({'role': 'result', 'type': 'image', 'url': imageUrl});
         });
