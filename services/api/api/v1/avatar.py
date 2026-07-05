@@ -1,6 +1,9 @@
 """Avatar endpoints — body photo analysis, quality validation, measurement storage."""
 
 import base64
+import logging
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
