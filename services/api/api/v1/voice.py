@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.core.database import get_db
-from services.api.core.models import BodyProfile, WardrobeItem
+from services.api.core.models import BodyProfile, Conversation, Session, WardrobeItem
 from services.api.core.security import get_current_user_id
 from services.api.services.sarvam_client import (
     synthesize_with_fallback,
@@ -170,6 +170,27 @@ async def voice_converse_text(
     except Exception as exc:
         logger.warning("[voice/converse-text] TTS failed: %s", exc)
 
+    # Persist messages to DB for chat history
+    try:
+        # Ensure session exists
+        existing = await db.execute(
+            select(Session).where(Session.id == body.session_id)
+        )
+        if not existing.scalar_one_or_none():
+            db.add(Session(id=body.session_id, user_id=user_id))
+
+        db.add(Conversation(
+            session_id=body.session_id, role="user",
+            content=body.message, language=body.language,
+        ))
+        db.add(Conversation(
+            session_id=body.session_id, role="assistant",
+            content=reply_text, language=body.language,
+        ))
+        await db.commit()
+    except Exception as exc:
+        logger.warning("[voice] Chat persistence failed: %s", exc)
+
     return {
         "transcript": body.message,
         "reply_text": reply_text,
@@ -179,6 +200,126 @@ async def voice_converse_text(
         "tts_engine": tts_engine,
         "outfit_state": outfit_state,
     }
+
+
+# ── Chat History Endpoints ───────────────────────────────────────
+
+class SessionInfo(BaseModel):
+    id: str
+    created_at: str
+    last_message: str | None = None
+    message_count: int = 0
+
+
+@router.get("/sessions")
+async def list_sessions(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all chat sessions for the current user, newest first."""
+    from sqlalchemy import func as sqlfunc
+
+    try:
+        result = await db.execute(
+            select(Session)
+            .where(Session.user_id == user_id)
+            .order_by(Session.created_at.desc())
+            .limit(50)
+        )
+        sessions = result.scalars().all()
+
+        session_list = []
+        for s in sessions:
+            # Get last message and count for this session
+            msg_result = await db.execute(
+                select(Conversation)
+                .where(Conversation.session_id == s.id)
+                .order_by(Conversation.created_at.desc())
+                .limit(1)
+            )
+            last_msg = msg_result.scalar_one_or_none()
+
+            count_result = await db.execute(
+                select(sqlfunc.count())
+                .select_from(Conversation)
+                .where(Conversation.session_id == s.id)
+            )
+            count = count_result.scalar() or 0
+
+            session_list.append({
+                "id": s.id,
+                "created_at": s.created_at.isoformat() if s.created_at else "",
+                "last_message": (last_msg.content[:80] + "...") if last_msg and len(last_msg.content) > 80 else (last_msg.content if last_msg else None),
+                "message_count": count,
+            })
+
+        return {"sessions": session_list}
+    except Exception as exc:
+        logger.warning("[voice] List sessions failed: %s", exc)
+        return {"sessions": []}
+
+
+@router.get("/sessions/{session_id}/messages")
+async def get_session_messages(
+    session_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Load all messages for a specific session."""
+    try:
+        # Verify session belongs to user
+        sess_result = await db.execute(
+            select(Session).where(
+                Session.id == session_id,
+                Session.user_id == user_id,
+            )
+        )
+        session = sess_result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        result = await db.execute(
+            select(Conversation)
+            .where(Conversation.session_id == session_id)
+            .order_by(Conversation.created_at.asc())
+            .limit(200)
+        )
+        messages = result.scalars().all()
+
+        return {
+            "session_id": session_id,
+            "messages": [
+                {
+                    "role": m.role,
+                    "text": m.content,
+                    "language": m.language,
+                    "created_at": m.created_at.isoformat() if m.created_at else "",
+                }
+                for m in messages
+            ],
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("[voice] Get messages failed: %s", exc)
+        return {"session_id": session_id, "messages": []}
+
+
+class CreateSessionRequest(BaseModel):
+    display_name: str | None = None
+
+
+@router.post("/sessions")
+async def create_session(
+    body: CreateSessionRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new chat session."""
+    new_id = str(uuid.uuid4())
+    db.add(Session(id=new_id, user_id=user_id))
+    await db.commit()
+    return {"session_id": new_id}
 
 
 class FinalizeRequest(BaseModel):

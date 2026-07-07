@@ -206,4 +206,31 @@ class ApiClient {
     });
     return resp.data as Map<String, dynamic>;
   }
+
+  // ── Chat History ─────────────────────────────────────────────
+
+  /// List all chat sessions for the current user
+  Future<List<Map<String, dynamic>>> listChatSessions() async {
+    final resp = await _dio.get('/api/v1/voice/sessions');
+    final data = resp.data as Map<String, dynamic>;
+    return ((data['sessions'] as List?) ?? [])
+        .map((s) => s as Map<String, dynamic>)
+        .toList();
+  }
+
+  /// Get all messages for a specific session
+  Future<List<Map<String, dynamic>>> getChatMessages(String sessionId) async {
+    final resp = await _dio.get('/api/v1/voice/sessions/$sessionId/messages');
+    final data = resp.data as Map<String, dynamic>;
+    return ((data['messages'] as List?) ?? [])
+        .map((m) => m as Map<String, dynamic>)
+        .toList();
+  }
+
+  /// Create a new chat session
+  Future<String> createChatSession() async {
+    final resp = await _dio.post('/api/v1/voice/sessions', data: {});
+    final data = resp.data as Map<String, dynamic>;
+    return data['session_id'] as String;
+  }
 }

@@ -25,7 +25,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final _messages = <Map<String, dynamic>>[];
-  final _voiceSessionId = 'voice-default';
+  String _voiceSessionId = 'voice-${DateTime.now().millisecondsSinceEpoch}';
   bool _loading = false;
   String _detectedLang = 'en'; // Auto-updated from responses
   final _audioPlayer = AudioPlayer();
@@ -39,6 +39,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   bool _isPlayingResponse = false;
 
+  // Chat history
+  List<Map<String, dynamic>> _sessionList = [];
+  bool _loadingSessions = false;
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +55,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
+    // Load sessions on init
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSessions());
   }
 
   @override
@@ -296,14 +303,93 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     }
   }
 
+  // ── Chat History ──────────────────────────────────────────────
+  Future<void> _loadSessions() async {
+    final connState = ref.read(connectionStateProvider);
+    if (connState != AppConnectionState.online) return;
+
+    setState(() => _loadingSessions = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      final sessions = await api.listChatSessions();
+      setState(() {
+        _sessionList = sessions;
+        _loadingSessions = false;
+      });
+    } catch (e) {
+      debugPrint('Load sessions failed: $e');
+      setState(() => _loadingSessions = false);
+    }
+  }
+
+  Future<void> _switchSession(String sessionId) async {
+    setState(() {
+      _voiceSessionId = sessionId;
+      _messages.clear();
+      _loading = true;
+    });
+    _scaffoldKey.currentState?.closeDrawer();
+
+    try {
+      final api = ref.read(apiClientProvider);
+      final msgs = await api.getChatMessages(sessionId);
+      setState(() {
+        for (final m in msgs) {
+          _messages.add({
+            'role': m['role'] as String? ?? 'assistant',
+            'text': m['text'] as String? ?? '',
+          });
+        }
+      });
+      _scrollToBottom();
+    } catch (e) {
+      debugPrint('Load messages failed: $e');
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _startNewChat() async {
+    _scaffoldKey.currentState?.closeDrawer();
+    final connState = ref.read(connectionStateProvider);
+    if (connState != AppConnectionState.online) return;
+
+    try {
+      final api = ref.read(apiClientProvider);
+      final newId = await api.createChatSession();
+      setState(() {
+        _voiceSessionId = newId;
+        _messages.clear();
+      });
+      await _loadSessions(); // refresh list
+    } catch (e) {
+      debugPrint('Create session failed: $e');
+      // Fallback: local-only new session
+      setState(() {
+        _voiceSessionId = 'voice-${DateTime.now().millisecondsSinceEpoch}';
+        _messages.clear();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final connState = ref.watch(connectionStateProvider);
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: Colors.transparent,
+      drawer: _buildHistoryDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.history, color: Color(0xFFD4AF37)),
+          tooltip: 'Chat History',
+          onPressed: () {
+            _loadSessions();
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -339,6 +425,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_comment_outlined, color: Color(0xFFD4AF37)),
+            tooltip: 'New Chat',
+            onPressed: _startNewChat,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -487,6 +580,184 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       buf.writeln('');
     }
     return buf.toString().trim();
+  }
+
+  // ── Chat History Drawer ──────────────────────────────────────
+  Widget _buildHistoryDrawer() {
+    return Drawer(
+      backgroundColor: const Color(0xFF0D0D14),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: const Color(0xFFD4AF37).withValues(alpha: 0.2),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Color(0xFFD4AF37), Color(0xFFF5E6A3)],
+                    ).createShader(bounds),
+                    child: const Icon(Icons.history, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Chat History',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline,
+                        color: Color(0xFFD4AF37), size: 24),
+                    tooltip: 'New Chat',
+                    onPressed: _startNewChat,
+                  ),
+                ],
+              ),
+            ),
+            // Session list
+            Expanded(
+              child: _loadingSessions
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFD4AF37),
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : _sessionList.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.chat_bubble_outline,
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  size: 48),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No conversations yet',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: _sessionList.length,
+                          itemBuilder: (_, i) {
+                            final s = _sessionList[i];
+                            final id = s['id'] as String? ?? '';
+                            final lastMsg = s['last_message'] as String?;
+                            final count = s['message_count'] as int? ?? 0;
+                            final createdAt = s['created_at'] as String? ?? '';
+                            final isActive = id == _voiceSessionId;
+
+                            // Parse time
+                            String timeLabel = '';
+                            if (createdAt.isNotEmpty) {
+                              try {
+                                final dt = DateTime.parse(createdAt);
+                                final diff = DateTime.now().difference(dt);
+                                if (diff.inMinutes < 60) {
+                                  timeLabel = '${diff.inMinutes}m ago';
+                                } else if (diff.inHours < 24) {
+                                  timeLabel = '${diff.inHours}h ago';
+                                } else {
+                                  timeLabel = '${diff.inDays}d ago';
+                                }
+                              } catch (_) {}
+                            }
+
+                            return Container(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 3),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                color: isActive
+                                    ? const Color(0xFFD4AF37).withValues(alpha: 0.15)
+                                    : Colors.transparent,
+                                border: isActive
+                                    ? Border.all(
+                                        color: const Color(0xFFD4AF37)
+                                            .withValues(alpha: 0.3))
+                                    : null,
+                              ),
+                              child: ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 2),
+                                leading: Icon(
+                                  isActive
+                                      ? Icons.chat_bubble
+                                      : Icons.chat_bubble_outline,
+                                  color: isActive
+                                      ? const Color(0xFFD4AF37)
+                                      : Colors.white.withValues(alpha: 0.4),
+                                  size: 20,
+                                ),
+                                title: Text(
+                                  lastMsg ?? 'New conversation',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: isActive
+                                        ? Colors.white
+                                        : Colors.white.withValues(alpha: 0.7),
+                                    fontSize: 13.5,
+                                    fontWeight: isActive
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                                subtitle: Row(
+                                  children: [
+                                    Text(
+                                      '$count messages',
+                                      style: TextStyle(
+                                        color:
+                                            Colors.white.withValues(alpha: 0.3),
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    if (timeLabel.isNotEmpty) ...[
+                                      Text(
+                                        '  •  $timeLabel',
+                                        style: TextStyle(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.3),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                onTap: isActive
+                                    ? null
+                                    : () => _switchSession(id),
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildResultCard(Map<String, dynamic> m) {
