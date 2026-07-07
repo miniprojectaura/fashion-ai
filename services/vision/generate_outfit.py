@@ -1,12 +1,19 @@
-"""Outfit generation — SDXL via HF Inference API → placeholder fallback.
+"""Outfit image generation — Pollinations.ai (free, no API key) → HF SDXL → placeholder.
 
-Production: Calls HF Inference API for Stable Diffusion XL with fashion-optimized
-prompts.  Falls back to deterministic placeholder PNGs when HF is unavailable.
+Pollinations.ai is a free, open-source AI image generation service that requires
+no API key, no account, and no rate limits for reasonable usage. It wraps Flux
+models and returns high-quality fashion images via simple HTTP GET.
+
+Fallback chain:
+  1. Pollinations.ai (free, no key) — primary, most reliable
+  2. HuggingFace SDXL (needs API key) — secondary
+  3. Deterministic placeholder PNG — last resort
 """
 
 import base64
 import hashlib
 import logging
+import urllib.parse
 from dataclasses import dataclass
 
 import httpx
@@ -31,7 +38,7 @@ class OutfitGenerationResult:
     full_ready_ms: int
 
 
-# Fashion-optimized SDXL prompt templates
+# Fashion-optimized prompt templates
 _PROMPT_TEMPLATES = [
     "{brief}, high fashion editorial photography, studio lighting, full body, 4k, detailed fabric texture",
     "{brief}, Indian ethnic wear collection, vibrant colors, professional fashion shoot, bokeh background",
@@ -40,57 +47,35 @@ _PROMPT_TEMPLATES = [
 ]
 
 
-async def generate_outfits(
-    *,
-    design_brief: str,
-    smplx_params: dict | None = None,
-    num_variants: int = 4,
-    clip_threshold: float = 0.28,
-) -> OutfitGenerationResult:
-    """Generate outfit images using SDXL via HF Inference API.
+async def _pollinations_generate(prompt: str, width: int = 512, height: int = 768) -> bytes | None:
+    """Generate image via Pollinations.ai — free, no API key needed.
 
-    Falls back to placeholder PNGs if HF is unavailable or rate-limited.
+    Uses a simple HTTP GET request. The service runs Flux models and returns
+    a PNG image directly. Highly reliable with no authentication required.
     """
-    settings = get_settings()
-    variants: list[OutfitVariant] = []
-    seed_base = hashlib.sha256(design_brief.encode()).hexdigest()
-
-    for i in range(min(num_variants, len(_PROMPT_TEMPLATES))):
-        prompt = _PROMPT_TEMPLATES[i].format(brief=design_brief)
-
-        # Try HF Inference API for SDXL
-        if settings.huggingface_api_key and hf_breaker.current_state != "open":
-            try:
-                image_bytes = await _hf_sdxl_generate(prompt, settings)
-                if image_bytes and len(image_bytes) > 500:
-                    variants.append(OutfitVariant(
-                        image_base64=base64.b64encode(image_bytes).decode("ascii"),
-                        prompt=prompt,
-                        clip_score=0.0,  # Real score: computed below if FashionCLIP available
-                    ))
-                    continue
-            except Exception as exc:
-                logger.warning("HF SDXL generation failed for variant %d: %s", i, exc)
-
-        # Fallback: deterministic placeholder — clearly marked as non-SDXL
-        variants.append(OutfitVariant(
-            image_base64=_placeholder_png_base64(f"{seed_base}-{i}"),
-            prompt=prompt,
-            clip_score=0.0,  # Placeholder — no real similarity to compute
-        ))
-
-    if not variants:
-        variants.append(OutfitVariant(
-            image_base64=_placeholder_png_base64(seed_base),
-            prompt=design_brief,
-            clip_score=0.0,  # Placeholder fallback
-        ))
-
-    return OutfitGenerationResult(
-        variants=variants[:num_variants],
-        preview_ready_ms=2000 if not settings.huggingface_api_key else 5000,
-        full_ready_ms=8000 if not settings.huggingface_api_key else 15000,
+    # URL-encode the prompt for the GET request
+    encoded_prompt = urllib.parse.quote(prompt, safe='')
+    # Use a deterministic seed from the prompt for consistency
+    seed = int(hashlib.md5(prompt.encode()).hexdigest()[:8], 16) % 999999
+    url = (
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        f"?width={width}&height={height}&seed={seed}&nologo=true&model=flux"
     )
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            resp = await client.get(url)
+            if resp.status_code == 200 and len(resp.content) > 1000:
+                content_type = resp.headers.get("content-type", "")
+                if "image" in content_type or len(resp.content) > 5000:
+                    logger.info("[pollinations] Generated image: %d bytes", len(resp.content))
+                    return resp.content
+            logger.warning("[pollinations] Unexpected response: status=%d, size=%d",
+                          resp.status_code, len(resp.content))
+            return None
+    except Exception as exc:
+        logger.warning("[pollinations] Generation failed: %s", exc)
+        return None
 
 
 async def _hf_sdxl_generate(prompt: str, settings) -> bytes | None:
@@ -151,28 +136,8 @@ def _placeholder_png_base64(seed: str) -> str:
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-async def generate_from_spec(
-    *,
-    spec: dict,
-    user_id: str = "anonymous",
-) -> str | None:
-    """Generate an outfit image from a finalized outfit spec.
-
-    Builds a detailed prompt from the structured spec, generates via SDXL,
-    stores the result, and returns a public URL.
-
-    Args:
-        spec: Finalized outfit spec dict with garment_type, fabric, color, etc.
-        user_id: For storage path namespacing.
-
-    Returns:
-        Public URL of the generated image, or None on failure.
-    """
-    import uuid
-
-    from services.api.core.storage import get_storage
-
-    # Build a rich prompt from the spec
+def _build_fashion_prompt(spec: dict) -> str:
+    """Build an optimized fashion prompt from outfit spec."""
     garment = spec.get("garment_type", "outfit")
     fabric = spec.get("fabric", "silk")
     color = spec.get("color", "red")
@@ -180,31 +145,124 @@ async def generate_from_spec(
     occasion = spec.get("occasion", "")
     style_notes = spec.get("style_notes", "")
 
-    prompt_parts = [
+    parts = [
         f"{color} {fabric} {garment}",
         f"{silhouette} silhouette" if silhouette else "",
         f"for {occasion}" if occasion else "",
         style_notes,
         "high fashion editorial photography, studio lighting, full body",
         "detailed fabric texture, professional fashion shoot, 4k quality",
+        "on a clean background, no text, no watermark",
     ]
-    prompt = ", ".join(p for p in prompt_parts if p).strip()
+    return ", ".join(p for p in parts if p).strip()
 
-    # Generate using existing SDXL pipeline
+
+async def generate_outfit_image(spec: dict) -> tuple[bytes | None, str]:
+    """Generate a single outfit image from spec using the most reliable method.
+
+    Returns:
+        Tuple of (image_bytes, engine_name). image_bytes is None only if all
+        engines fail (very unlikely since Pollinations requires no API key).
+    """
+    prompt = _build_fashion_prompt(spec)
     settings = get_settings()
-    image_bytes = None
 
+    # Tier 1: Pollinations.ai (free, no API key, most reliable)
+    image_bytes = await _pollinations_generate(prompt)
+    if image_bytes and len(image_bytes) > 1000:
+        return image_bytes, "pollinations"
+
+    # Tier 2: HuggingFace SDXL (needs API key)
     if settings.huggingface_api_key and hf_breaker.current_state != "open":
         try:
             image_bytes = await _hf_sdxl_generate(prompt, settings)
+            if image_bytes and len(image_bytes) > 500:
+                return image_bytes, "hf_sdxl"
         except Exception as exc:
-            logger.warning("SDXL generation from spec failed: %s", exc)
+            logger.warning("HF SDXL fallback failed: %s", exc)
 
-    if not image_bytes or len(image_bytes) < 500:
-        # Fallback: generate placeholder
-        seed = hashlib.sha256(prompt.encode()).hexdigest()
-        placeholder_b64 = _placeholder_png_base64(seed)
-        image_bytes = base64.b64decode(placeholder_b64)
+    # Tier 3: Deterministic placeholder (always works)
+    seed = hashlib.sha256(prompt.encode()).hexdigest()
+    placeholder_b64 = _placeholder_png_base64(seed)
+    return base64.b64decode(placeholder_b64), "placeholder"
+
+
+async def generate_outfits(
+    *,
+    design_brief: str,
+    smplx_params: dict | None = None,
+    num_variants: int = 4,
+    clip_threshold: float = 0.28,
+) -> OutfitGenerationResult:
+    """Generate outfit image variants using the tiered generation chain."""
+    variants: list[OutfitVariant] = []
+
+    for i in range(min(num_variants, len(_PROMPT_TEMPLATES))):
+        prompt = _PROMPT_TEMPLATES[i].format(brief=design_brief)
+
+        # Try Pollinations first (free, reliable)
+        image_bytes = await _pollinations_generate(prompt)
+        if image_bytes and len(image_bytes) > 1000:
+            variants.append(OutfitVariant(
+                image_base64=base64.b64encode(image_bytes).decode("ascii"),
+                prompt=prompt,
+                clip_score=0.0,
+            ))
+            continue
+
+        # Try HF SDXL
+        settings = get_settings()
+        if settings.huggingface_api_key and hf_breaker.current_state != "open":
+            try:
+                image_bytes = await _hf_sdxl_generate(prompt, settings)
+                if image_bytes and len(image_bytes) > 500:
+                    variants.append(OutfitVariant(
+                        image_base64=base64.b64encode(image_bytes).decode("ascii"),
+                        prompt=prompt,
+                        clip_score=0.0,
+                    ))
+                    continue
+            except Exception as exc:
+                logger.warning("HF SDXL variant %d failed: %s", i, exc)
+
+        # Placeholder fallback
+        seed_base = hashlib.sha256(design_brief.encode()).hexdigest()
+        variants.append(OutfitVariant(
+            image_base64=_placeholder_png_base64(f"{seed_base}-{i}"),
+            prompt=prompt,
+            clip_score=0.0,
+        ))
+
+    if not variants:
+        seed_base = hashlib.sha256(design_brief.encode()).hexdigest()
+        variants.append(OutfitVariant(
+            image_base64=_placeholder_png_base64(seed_base),
+            prompt=design_brief,
+            clip_score=0.0,
+        ))
+
+    return OutfitGenerationResult(
+        variants=variants[:num_variants],
+        preview_ready_ms=5000,
+        full_ready_ms=15000,
+    )
+
+
+async def generate_from_spec(
+    *,
+    spec: dict,
+    user_id: str = "anonymous",
+) -> str | None:
+    """Generate an outfit image from spec, store it, return URL."""
+    import uuid
+    from services.api.core.storage import get_storage
+
+    image_bytes, engine = await generate_outfit_image(spec)
+    logger.info("[generate_from_spec] engine=%s, bytes=%d",
+                engine, len(image_bytes) if image_bytes else 0)
+
+    if not image_bytes:
+        return None
 
     # Store to object storage
     try:
@@ -219,4 +277,3 @@ async def generate_from_spec(
     except Exception as exc:
         logger.warning("Outfit image storage failed: %s", exc)
         return None
-

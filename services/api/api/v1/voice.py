@@ -246,40 +246,19 @@ async def finalize_outfit(
     except Exception:
         pass
 
-    # Phase D: Generate outfit image — capture bytes for inline delivery
+    # Phase D: Generate outfit image — Pollinations.ai (free) → HF SDXL → placeholder
     image_url = None
     outfit_image_b64 = None
     try:
-        from services.vision.generate_outfit import generate_from_spec, _hf_sdxl_generate, _placeholder_png_base64
-        import hashlib as _hashlib
+        from services.vision.generate_outfit import generate_outfit_image, generate_from_spec
 
-        # Build prompt from spec (same logic as generate_from_spec)
-        _garment = spec.get('garment_type', 'outfit')
-        _fabric = spec.get('fabric', 'silk')
-        _color = spec.get('color', 'red')
-        _silhouette = spec.get('silhouette', '')
-        _occasion = spec.get('occasion', '')
-        _style = spec.get('style_notes', '')
-        _parts = [f'{_color} {_fabric} {_garment}',
-                  f'{_silhouette} silhouette' if _silhouette else '',
-                  f'for {_occasion}' if _occasion else '', _style,
-                  'high fashion editorial, studio lighting, full body, 4k']
-        _prompt = ', '.join(p for p in _parts if p)
+        img_bytes, img_engine = await generate_outfit_image(spec)
+        if img_bytes and len(img_bytes) > 500:
+            outfit_image_b64 = base64.b64encode(img_bytes).decode('ascii')
+            logger.info('[finalize] Outfit image generated via %s (%d bytes)',
+                        img_engine, len(img_bytes))
 
-        from services.api.core.config import get_settings as _gs
-        from services.api.core.resilience import hf_breaker
-        _settings = _gs()
-        _img_bytes = None
-        if _settings.huggingface_api_key and hf_breaker.current_state != 'open':
-            _img_bytes = await _hf_sdxl_generate(_prompt, _settings)
-        if not _img_bytes or len(_img_bytes) < 500:
-            _seed = _hashlib.sha256(_prompt.encode()).hexdigest()
-            _img_bytes = base64.b64decode(_placeholder_png_base64(_seed))
-
-        # Store base64 for inline delivery to mobile
-        outfit_image_b64 = base64.b64encode(_img_bytes).decode('ascii')
-
-        # Also try to get a URL (best-effort)
+        # Also try to get a stored URL (best-effort)
         try:
             image_url = await generate_from_spec(spec=spec, user_id=user_id)
         except Exception:
