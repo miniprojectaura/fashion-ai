@@ -387,6 +387,19 @@ async def finalize_outfit(
     except Exception:
         pass
 
+    # Infer gender into spec if the LLM didn't set it
+    if not spec.get('gender') and body_profile:
+        # Try vlm_metadata.gender first, then gender_presentation
+        vlm_meta = body_profile.get('vlm_metadata', {})
+        inferred = (
+            vlm_meta.get('gender', '')
+            or body_profile.get('gender_presentation', '')
+            or body_profile.get('gender', '')
+        ).strip().lower()
+        if inferred:
+            spec['gender'] = inferred
+            logger.info('[finalize] Inferred gender from body profile: %s', inferred)
+
     # Phase D: Generate outfit image — Pollinations.ai (free) → HF SDXL → placeholder
     image_url = None
     outfit_image_b64 = None

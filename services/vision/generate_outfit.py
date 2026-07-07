@@ -144,9 +144,19 @@ def _build_fashion_prompt(spec: dict) -> str:
     silhouette = spec.get("silhouette", "")
     occasion = spec.get("occasion", "")
     style_notes = spec.get("style_notes", "")
+    gender = spec.get("gender", "").lower().strip()
+
+    # Gender-specific model descriptor
+    if gender in ("male", "man", "men", "masculine"):
+        model_desc = "worn by a male model, menswear"
+    elif gender in ("female", "woman", "women", "feminine"):
+        model_desc = "worn by a female model, womenswear"
+    else:
+        model_desc = ""
 
     parts = [
         f"{color} {fabric} {garment}",
+        model_desc,
         f"{silhouette} silhouette" if silhouette else "",
         f"for {occasion}" if occasion else "",
         style_notes,

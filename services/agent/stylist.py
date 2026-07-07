@@ -32,6 +32,7 @@ class OutfitSpec:
     fabric: str = ""
     color: str = ""
     silhouette: str = ""
+    gender: str = ""  # male / female / unisex
     measurements: dict = field(default_factory=dict)
     style_notes: str = ""
     occasion: str = ""
@@ -141,6 +142,7 @@ When finalizing, output a JSON block wrapped in ```json ... ``` with these exact
   "fabric": "...",
   "color": "...",
   "silhouette": "...",
+  "gender": "male or female or unisex",
   "style_notes": "...",
   "occasion": "...",
   "budget_inr": 0
@@ -171,6 +173,7 @@ def _extract_spec_from_reply(reply: str, existing_spec: OutfitSpec) -> OutfitSpe
                 fabric=data.get("fabric", existing_spec.fabric),
                 color=data.get("color", existing_spec.color),
                 silhouette=data.get("silhouette", existing_spec.silhouette),
+                gender=data.get("gender", existing_spec.gender),
                 style_notes=data.get("style_notes", existing_spec.style_notes),
                 occasion=data.get("occasion", existing_spec.occasion),
                 budget_inr=data.get("budget_inr", existing_spec.budget_inr),
