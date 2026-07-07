@@ -25,7 +25,7 @@ dependencies:
   path: ^1.9.0
   flutter_i18n: ^0.36.2
   url_launcher: ^6.3.1
-  shared_preferences: ^2.3.3
+  shared_preferences: ^2.5.5
   model_viewer_plus: ^1.8.0
   intl: ^0.20.2
 

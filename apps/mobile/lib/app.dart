@@ -5,6 +5,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/aura_background.dart';
+import 'core/api_provider.dart';
+import 'features/auth/auth_screen.dart';
 import 'features/chat/chat_screen.dart';
 import 'features/home/status_banner.dart';
 import 'features/avatar/avatar_capture_screen.dart';
@@ -49,7 +51,48 @@ class FashionAiApp extends ConsumerWidget {
         Locale('te'),
         Locale('hi'),
       ],
-      home: const MainShell(),
+      home: const _AuthGate(),
+    );
+  }
+}
+
+/// Gates the app: shows AuthScreen until authenticated, then MainShell.
+class _AuthGate extends ConsumerStatefulWidget {
+  const _AuthGate();
+
+  @override
+  ConsumerState<_AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends ConsumerState<_AuthGate> {
+  bool _ready = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Try to restore cached session on first load
+    final initAsync = ref.watch(initApiProvider);
+    final isAuth = ref.watch(isAuthenticatedProvider);
+
+    return initAsync.when(
+      loading: () => const Scaffold(
+        backgroundColor: Color(0xFF0A0A10),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFD4AF37),
+          ),
+        ),
+      ),
+      error: (_, __) => AuthScreen(
+        onAuthenticated: () => setState(() => _ready = true),
+      ),
+      data: (restored) {
+        if (restored || isAuth || _ready) {
+          return const MainShell();
+        }
+        return AuthScreen(
+          onAuthenticated: () => setState(() => _ready = true),
+        );
+      },
     );
   }
 }

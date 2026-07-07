@@ -24,9 +24,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     with TickerProviderStateMixin {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final _messages = <Map<String, String>>[];
+  final _messages = <Map<String, dynamic>>[];
   final _voiceSessionId = 'voice-default';
   bool _loading = false;
+  String _detectedLang = 'en'; // Auto-updated from responses
   final _audioPlayer = AudioPlayer();
   late final AnimationController _typingCtrl;
   late final AnimationController _pulseCtrl;
@@ -98,8 +99,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       final resp = await api.voiceConverseText(
         message: text,
         sessionId: _voiceSessionId,
-        language: 'te',
+        language: _detectedLang,
       );
+
+      // Update detected language from server response
+      final serverLang = resp['detected_language'] as String?;
+      if (serverLang != null && serverLang.isNotEmpty) {
+        _detectedLang = serverLang;
+      }
 
       final replyText = resp['reply_text'] as String? ?? '';
       _addMessage('assistant', replyText);
@@ -125,9 +132,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     }
   }
 
-  void _addMessage(String role, String text) {
+  void _addMessage(String role, String text, {String? imageB64, List<Map<String, dynamic>>? products, Map<String, dynamic>? tailoring, Map<String, dynamic>? spec}) {
     setState(() {
-      _messages.add({'role': role, 'text': text});
+      _messages.add({
+        'role': role,
+        'text': text,
+        if (imageB64 != null) 'image_b64': imageB64,
+        if (products != null) 'products': products,
+        if (tailoring != null) 'tailoring': tailoring,
+        if (spec != null) 'spec': spec,
+      });
     });
     _scrollToBottom();
   }
@@ -475,17 +489,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return buf.toString().trim();
   }
 
-  Widget _buildResultCard(Map<String, String> m) {
-    final type = m['type'] ?? '';
+  Widget _buildResultCard(Map<String, dynamic> m) {
+    final type = (m['type'] ?? '') as String;
 
     if (type == 'image' || type == 'tryon') {
       final label = type == 'tryon' ? '👗 Virtual Try-On' : '🎨 Design Preview';
       Widget imageWidget;
       if (type == 'tryon') {
-        final bytes = base64Decode(m['data'] ?? '');
+        final bytes = base64Decode((m['data'] ?? '').toString());
         imageWidget = Image.memory(Uint8List.fromList(bytes), fit: BoxFit.cover);
       } else {
-        imageWidget = Image.network(m['url'] ?? '', fit: BoxFit.cover,
+        imageWidget = Image.network((m['url'] ?? '').toString(), fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, color: Colors.white30)));
       }
       return Padding(
@@ -508,8 +522,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     }
 
     if (type == 'products') {
-      final links = (m['links'] ?? '').split('|');
-      final names = (m['names'] ?? '').split('|');
+      final links = (m['links'] ?? '').toString().split('|');
+      final names = (m['names'] ?? '').toString().split('|');
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Container(
@@ -572,7 +586,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     if (type == 'reasoning') {
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: _ExpandableReasoningCard(reasoning: m['text'] ?? ''),
+        child: _ExpandableReasoningCard(reasoning: (m['text'] ?? '').toString()),
       );
     }
 
@@ -596,7 +610,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             _resultLabel('📐 Tailoring Measurements'),
             const SizedBox(height: 8),
             Text(
-              m['text'] ?? '',
+              (m['text'] ?? '').toString(),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.85),
                 fontSize: 13,
@@ -864,7 +878,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     );
   }
 
-  Widget _buildMessageBubble(Map<String, String> m) {
+  Widget _buildMessageBubble(Map<String, dynamic> m) {
     // Route result cards to rich display widgets
     if (m['role'] == 'result') {
       return _buildResultCard(m);
@@ -908,7 +922,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
               decoration:
                   isUser ? AuraTheme.userBubble : AuraTheme.assistantBubble,
               child: Text(
-                m['text'] ?? '',
+                (m['text'] ?? '').toString(),
                 style: TextStyle(
                   color: isUser ? Colors.white : Colors.white.withValues(alpha: 0.9),
                   fontSize: 14.5,
